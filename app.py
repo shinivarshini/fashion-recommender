@@ -10,52 +10,59 @@ from tensorflow.keras.applications.resnet50 import ResNet50, preprocess_input
 from sklearn.neighbors import NearestNeighbors
 from numpy.linalg import norm
 
-# Load pre-calculated data
-feature_list = np.array(pickle.load(open('embeddings.pkl', 'rb')))
-# Check if we are in the Cloud (sample_data) or Local (original images)
-if os.path.exists('sample_data') and len(os.listdir('sample_data')) > 0:
-    filenames = [os.path.join('sample_data', f) for f in os.listdir('sample_data')]
-else:
-    filenames = pickle.load(open('filenames.pkl', 'rb'))
+# 1. Load the "Saved Memory"
+feature_list = np.array(pickle.load(open('embeddings.pkl','rb')))
+filenames = pickle.load(open('filenames.pkl','rb'))
 
-# Load model
+# 2. Load the Model (The Brain)
 model = ResNet50(weights='imagenet', include_top=False, input_shape=(224, 224, 3))
 model.trainable = False
 model = tf.keras.Sequential([model, GlobalMaxPooling2D()])
 
-st.title('👗 Fashion Recommender System')
+st.title('Fashion Recommender System')
 
-# Ensure upload directory exists
-if not os.path.exists("uploads"):
-    os.makedirs("uploads")
-
-uploaded_file = st.file_uploader("Choose a clothing image...")
-
-if uploaded_file is not None:
-    # Save file
-    file_path = os.path.join("uploads", uploaded_file.name)
-    with open(file_path, "wb") as f:
-        f.write(uploaded_file.getbuffer())
-    
-    # Show uploaded image
-    st.image(Image.open(uploaded_file), width=300, caption="Your Upload")
-
-    # Extract features
-    img = image.load_img(file_path, target_size=(224, 224))
+# 3. Helper Function to extract features from uploaded image
+def extract_feature(img_path, model):
+    img = image.load_img(img_path, target_size=(224, 224))
     img_array = image.img_to_array(img)
     expanded_img_array = np.expand_dims(img_array, axis=0)
     preprocessed_img = preprocess_input(expanded_img_array)
     result = model.predict(preprocessed_img).flatten()
     normalized_result = result / norm(result)
+    return normalized_result
 
-    # Find matches
+# 4. The Recommender Logic
+def recommend(features, feature_list):
     neighbors = NearestNeighbors(n_neighbors=6, algorithm='brute', metric='euclidean')
     neighbors.fit(feature_list)
-    distances, indices = neighbors.kneighbors([normalized_result])
+    distances, indices = neighbors.kneighbors([features])
+    return indices
 
-    # Show matches
-    st.header("Recommendations")
-    cols = st.columns(5)
-    for i in range(1, 6):
-        with cols[i-1]:
-            st.image(filenames[indices[0][i]])
+# 5. The Website Interface
+uploaded_file = st.file_uploader("Upload an item of clothing")
+
+if uploaded_file is not None:
+    # Save the file temporarily
+    if not os.path.exists('uploads'):
+        os.makedirs('uploads')
+    with open(os.path.join("uploads", uploaded_file.name), "wb") as f:
+        f.write(uploaded_file.getbuffer())
+
+    # Show the uploaded image
+    display_image = Image.open(uploaded_file)
+    st.image(display_image, width=200, caption='Your Selection')
+
+    # Process and Recommend
+    features = extract_feature(os.path.join("uploads", uploaded_file.name), model)
+    indices = recommend(features, feature_list)
+
+    # Display the results in 5 columns
+    st.subheader("Recommended for you:")
+    col1, col2, col3, col4, col5 = st.columns(5)
+    
+    # Map back to your data folder
+    with col1: st.image(filenames[indices[0][1]])
+    with col2: st.image(filenames[indices[0][2]])
+    with col3: st.image(filenames[indices[0][3]])
+    with col4: st.image(filenames[indices[0][4]])
+    with col5: st.image(filenames[indices[0][5]])
