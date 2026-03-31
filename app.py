@@ -12,7 +12,11 @@ from numpy.linalg import norm
 
 # Load pre-calculated data
 feature_list = np.array(pickle.load(open('embeddings.pkl', 'rb')))
-filenames = pickle.load(open('filenames.pkl', 'rb'))
+# Check if we are in the Cloud (sample_data) or Local (original images)
+if os.path.exists('sample_data') and len(os.listdir('sample_data')) > 0:
+    filenames = [os.path.join('sample_data', f) for f in os.listdir('sample_data')]
+else:
+    filenames = pickle.load(open('filenames.pkl', 'rb'))
 
 # Load model
 model = ResNet50(weights='imagenet', include_top=False, input_shape=(224, 224, 3))
