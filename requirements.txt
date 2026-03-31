@@ -1,5 +1,7 @@
+tensorflow
 streamlit
-tensorflow-cpu==2.15.0
+pandas
+numpy
 pillow
+opencv-python-headless
 scikit-learn
-numpy<2.0.0
