@@ -11,13 +11,18 @@ from sklearn.neighbors import NearestNeighbors
 from numpy.linalg import norm
 
 # 1. Load the "Saved Memory"
+# These files must be in your GitHub repository
 feature_list = np.array(pickle.load(open('embeddings.pkl','rb')))
 filenames = pickle.load(open('filenames.pkl','rb'))
 
-# 2. Load the Model (The Brain)
-model = ResNet50(weights='imagenet', include_top=False, input_shape=(224, 224, 3))
-model.trainable = False
-model = tf.keras.Sequential([model, GlobalMaxPooling2D()])
+# 2. Load the Model (The Brain) - Optimized for Cloud
+@st.cache_resource
+def load_model():
+    base_model = ResNet50(weights='imagenet', include_top=False, input_shape=(224, 224, 3))
+    base_model.trainable = False
+    return tf.keras.Sequential([base_model, GlobalMaxPooling2D()])
+
+model = load_model()
 
 st.title('Fashion Recommender System')
 
@@ -45,6 +50,7 @@ if uploaded_file is not None:
     # Save the file temporarily
     if not os.path.exists('uploads'):
         os.makedirs('uploads')
+    
     with open(os.path.join("uploads", uploaded_file.name), "wb") as f:
         f.write(uploaded_file.getbuffer())
 
@@ -59,10 +65,16 @@ if uploaded_file is not None:
     # Display the results in 5 columns
     st.subheader("Recommended for you:")
     col1, col2, col3, col4, col5 = st.columns(5)
-    
+
     # Map back to your data folder
-    with col1: st.image(filenames[indices[0][1]])
-    with col2: st.image(filenames[indices[0][2]])
-    with col3: st.image(filenames[indices[0][3]])
-    with col4: st.image(filenames[indices[0][4]])
-    with col5: st.image(filenames[indices[0][5]])
+    # Note: Ensure the filenames in your .pkl match the folder on GitHub
+    with col1:
+        st.image(filenames[indices[0][1]])
+    with col2:
+        st.image(filenames[indices[0][2]])
+    with col3:
+        st.image(filenames[indices[0][3]])
+    with col4:
+        st.image(filenames[indices[0][4]])
+    with col5:
+        st.image(filenames[indices[0][5]])
